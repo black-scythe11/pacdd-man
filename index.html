@@ -2,31 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pac-Man Simple</title>
+  <title>Pac-Man Improved</title>
   <style>
     body {
       background: black;
       margin: 0;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      color: white;
+      font-family: Arial, sans-serif;
     }
     canvas {
       background: #000;
+      border: 3px solid yellow;
+    }
+    #score {
+      margin-bottom: 10px;
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
+<div id="score">Score: 0</div>
+<canvas id="gameCanvas" width="600" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const scoreDisplay = document.getElementById("score");
 
-const gridSize = 20;
+const gridSize = 30;
 const rows = canvas.height / gridSize;
 const cols = canvas.width / gridSize;
+
+let score = 0;
 
 let pacman = {
   x: 1,
@@ -35,10 +47,23 @@ let pacman = {
   dy: 0
 };
 
+// Simple maze (1 = wall, 0 = path)
+const maze = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,0,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,0,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
 let dots = [];
-for (let y = 0; y < rows; y++) {
-  for (let x = 0; x < cols; x++) {
-    dots.push({ x, y });
+for (let y = 0; y < maze.length; y++) {
+  for (let x = 0; x < maze[y].length; x++) {
+    if (maze[y][x] === 0) {
+      dots.push({ x, y });
+    }
   }
 }
 
@@ -63,7 +88,7 @@ function drawDots() {
     ctx.arc(
       dot.x * gridSize + gridSize / 2,
       dot.y * gridSize + gridSize / 2,
-      3,
+      4,
       0,
       Math.PI * 2
     );
@@ -71,49 +96,29 @@ function drawDots() {
   });
 }
 
-function update() {
-  pacman.x += pacman.dx;
-  pacman.y += pacman.dy;
+function drawMaze() {
+  ctx.fillStyle = "blue";
+  for (let y = 0; y < maze.length; y++) {
+    for (let x = 0; x < maze[y].length; x++) {
+      if (maze[y][x] === 1) {
+        ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+      }
+    }
+  }
+}
 
-  // wrap around
-  if (pacman.x < 0) pacman.x = cols - 1;
-  if (pacman.x >= cols) pacman.x = 0;
-  if (pacman.y < 0) pacman.y = rows - 1;
-  if (pacman.y >= rows) pacman.y = 0;
+function update() {
+  let nextX = pacman.x + pacman.dx;
+  let nextY = pacman.y + pacman.dy;
+
+  // collision with walls
+  if (maze[nextY] && maze[nextY][nextX] === 0) {
+    pacman.x = nextX;
+    pacman.y = nextY;
+  }
 
   // eat dots
-  dots = dots.filter(dot => !(dot.x === pacman.x && dot.y === pacman.y));
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawDots();
-  drawPacman();
-}
-
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-document.addEventListener("keydown", e => {
-  if (e.key === "ArrowUp") {
-    pacman.dx = 0;
-    pacman.dy = -1;
-  } else if (e.key === "ArrowDown") {
-    pacman.dx = 0;
-    pacman.dy = 1;
-  } else if (e.key === "ArrowLeft") {
-    pacman.dx = -1;
-    pacman.dy = 0;
-  } else if (e.key === "ArrowRight") {
-    pacman.dx = 1;
-    pacman.dy = 0;
-  }
-});
-
-gameLoop();
-</script>
-</body>
-</html>
+  dots = dots.filter(dot => {
+    if (dot.x === pacman.x && dot.y === pacman.y) {
+      score += 10;
+      score

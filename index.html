@@ -51,6 +51,7 @@ function resizeCanvas(size) {
   canvas.height = size;
 }
 
+// Generate maze
 function generateMaze(size, density) {
   let newMaze = [];
 
@@ -66,8 +67,27 @@ function generateMaze(size, density) {
     newMaze.push(row);
   }
 
-  newMaze[1][1] = 0;
   return newMaze;
+}
+
+// 🔥 GUARANTEED PATH (NEW FEATURE)
+function carvePath(maze, start, end) {
+  let x = start.x;
+  let y = start.y;
+
+  // carve horizontal path
+  while (x !== end.x) {
+    maze[y][x] = 0;
+    x += x < end.x ? 1 : -1;
+  }
+
+  // carve vertical path
+  while (y !== end.y) {
+    maze[y][x] = 0;
+    y += y < end.y ? 1 : -1;
+  }
+
+  maze[end.y][end.x] = 0;
 }
 
 function randomEmptyCell() {
@@ -83,19 +103,19 @@ function initLevel() {
   let size = 10 + level * 4;
   resizeCanvas(size * gridSize);
 
-  maze = generateMaze(size, 0.2 + level * 0.05);
+  maze = generateMaze(size, 0.2 + level * 0.03);
 
   pacman = { x: 1, y: 1, dx: 1, dy: 0 };
 
-  // Exit point (ending spot)
-  exitPoint = randomEmptyCell();
+  // exit point
+  exitPoint = { x: size - 2, y: size - 2 };
 
-  // Make sure exit isn't blocked near wall start
-  exitPoint.x = size - 2;
-  exitPoint.y = size - 2;
   maze[exitPoint.y][exitPoint.x] = 0;
 
-  // Dots
+  // 🔥 create guaranteed path
+  carvePath(maze, { x: 1, y: 1 }, exitPoint);
+
+  // dots
   dots = [];
   for (let y = 0; y < maze.length; y++) {
     for (let x = 0; x < maze[y].length; x++) {
@@ -105,11 +125,13 @@ function initLevel() {
     }
   }
 
-  // Enemies
+  // 🔥 ENEMIES INCREASE MORE EACH LEVEL (UPDATED)
   enemies = [];
-  for (let i = 0; i < level; i++) {
+  let enemyCount = Math.floor(level * 1.5) + 1;
+
+  for (let i = 0; i < enemyCount; i++) {
     let pos = randomEmptyCell();
-    enemies.push({ x: pos.x, y: pos.y, dx: 1, dy: 0 });
+    enemies.push({ x: pos.x, y: pos.y });
   }
 }
 
@@ -212,7 +234,6 @@ function update() {
     pacman.y = nextY;
   }
 
-  // score from dots (optional)
   dots = dots.filter(dot => {
     if (dot.x === pacman.x && dot.y === pacman.y) {
       score += 10;
@@ -221,20 +242,18 @@ function update() {
     return true;
   });
 
-  // enemy collision
   enemies.forEach(e => {
     if (e.x === pacman.x && e.y === pacman.y) {
       gameOver = true;
     }
   });
 
-  // reach exit = next level
   if (pacman.x === exitPoint.x && pacman.y === exitPoint.y) {
     level++;
     initLevel();
   }
 
-  if (level > 5) {
+  if (level > 8) {
     gameOver = true;
   }
 

@@ -121,4 +121,43 @@ function update() {
   dots = dots.filter(dot => {
     if (dot.x === pacman.x && dot.y === pacman.y) {
       score += 10;
-      score
+      scoreDisplay.textContent = "Score: " + score;
+      return false;
+    }
+    return true;
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawMaze();
+  drawDots();
+  drawPacman();
+}
+
+function gameLoop() {
+  update();
+  draw();
+}
+
+// slower speed
+setInterval(gameLoop, 150);
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowUp") {
+    pacman.dx = 0;
+    pacman.dy = -1;
+  } else if (e.key === "ArrowDown") {
+    pacman.dx = 0;
+    pacman.dy = 1;
+  } else if (e.key === "ArrowLeft") {
+    pacman.dx = -1;
+    pacman.dy = 0;
+  } else if (e.key === "ArrowRight") {
+    pacman.dx = 1;
+    pacman.dy = 0;
+  }
+});
+</script>
+</body>
+</html>

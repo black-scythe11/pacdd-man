@@ -26,6 +26,7 @@
   </style>
 </head>
 <body>
+
 <div id="ui">Score: 0 | Level: 1</div>
 <canvas id="gameCanvas"></canvas>
 
@@ -42,6 +43,8 @@ let gameOver = false;
 let pacman;
 let maze;
 let dots;
+let enemies = [];
+let exitPoint;
 
 function resizeCanvas(size) {
   canvas.width = size;
@@ -49,14 +52,12 @@ function resizeCanvas(size) {
 }
 
 function generateMaze(size, density) {
-  let rows = size;
-  let cols = size;
   let newMaze = [];
 
-  for (let y = 0; y < rows; y++) {
+  for (let y = 0; y < size; y++) {
     let row = [];
-    for (let x = 0; x < cols; x++) {
-      if (y === 0 || x === 0 || y === rows - 1 || x === cols - 1) {
+    for (let x = 0; x < size; x++) {
+      if (y === 0 || x === 0 || y === size - 1 || x === size - 1) {
         row.push(1);
       } else {
         row.push(Math.random() < density ? 1 : 0);
@@ -69,14 +70,32 @@ function generateMaze(size, density) {
   return newMaze;
 }
 
+function randomEmptyCell() {
+  let x, y;
+  do {
+    x = Math.floor(Math.random() * maze.length);
+    y = Math.floor(Math.random() * maze.length);
+  } while (maze[y][x] === 1);
+  return { x, y };
+}
+
 function initLevel() {
-  let size = 10 + level * 4; // bigger map each level
+  let size = 10 + level * 4;
   resizeCanvas(size * gridSize);
 
-  maze = generateMaze(size, 0.2 + level * 0.05); // more walls each level
+  maze = generateMaze(size, 0.2 + level * 0.05);
 
   pacman = { x: 1, y: 1, dx: 1, dy: 0 };
 
+  // Exit point (ending spot)
+  exitPoint = randomEmptyCell();
+
+  // Make sure exit isn't blocked near wall start
+  exitPoint.x = size - 2;
+  exitPoint.y = size - 2;
+  maze[exitPoint.y][exitPoint.x] = 0;
+
+  // Dots
   dots = [];
   for (let y = 0; y < maze.length; y++) {
     for (let x = 0; x < maze[y].length; x++) {
@@ -84,6 +103,13 @@ function initLevel() {
         dots.push({ x, y });
       }
     }
+  }
+
+  // Enemies
+  enemies = [];
+  for (let i = 0; i < level; i++) {
+    let pos = randomEmptyCell();
+    enemies.push({ x: pos.x, y: pos.y, dx: 1, dy: 0 });
   }
 }
 
@@ -96,7 +122,10 @@ function drawPacman() {
     0.25 * Math.PI,
     1.75 * Math.PI
   );
-  ctx.lineTo(pacman.x * gridSize + gridSize / 2, pacman.y * gridSize + gridSize / 2);
+  ctx.lineTo(
+    pacman.x * gridSize + gridSize / 2,
+    pacman.y * gridSize + gridSize / 2
+  );
   ctx.fillStyle = "yellow";
   ctx.fill();
 }
@@ -127,6 +156,51 @@ function drawMaze() {
   }
 }
 
+function drawExit() {
+  ctx.fillStyle = "lime";
+  ctx.fillRect(
+    exitPoint.x * gridSize,
+    exitPoint.y * gridSize,
+    gridSize,
+    gridSize
+  );
+}
+
+function drawEnemies() {
+  ctx.fillStyle = "red";
+  enemies.forEach(e => {
+    ctx.beginPath();
+    ctx.arc(
+      e.x * gridSize + gridSize / 2,
+      e.y * gridSize + gridSize / 2,
+      gridSize / 2,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  });
+}
+
+function moveEnemies() {
+  enemies.forEach(e => {
+    let dirs = [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 }
+    ];
+
+    let move = dirs[Math.floor(Math.random() * dirs.length)];
+    let nx = e.x + move.dx;
+    let ny = e.y + move.dy;
+
+    if (maze[ny] && maze[ny][nx] === 0) {
+      e.x = nx;
+      e.y = ny;
+    }
+  });
+}
+
 function update() {
   if (gameOver) return;
 
@@ -138,6 +212,7 @@ function update() {
     pacman.y = nextY;
   }
 
+  // score from dots (optional)
   dots = dots.filter(dot => {
     if (dot.x === pacman.x && dot.y === pacman.y) {
       score += 10;
@@ -146,30 +221,45 @@ function update() {
     return true;
   });
 
-  // level complete
-  if (dots.length === 0) {
+  // enemy collision
+  enemies.forEach(e => {
+    if (e.x === pacman.x && e.y === pacman.y) {
+      gameOver = true;
+    }
+  });
+
+  // reach exit = next level
+  if (pacman.x === exitPoint.x && pacman.y === exitPoint.y) {
     level++;
     initLevel();
   }
 
-  // simple ending condition
   if (level > 5) {
     gameOver = true;
   }
+
+  moveEnemies();
 
   ui.textContent = `Score: ${score} | Level: ${level}`;
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   drawMaze();
+  drawExit();
   drawDots();
+  drawEnemies();
   drawPacman();
 
   if (gameOver) {
     ctx.fillStyle = "white";
     ctx.font = "40px Arial";
-    ctx.fillText("YOU WIN!", canvas.width / 2 - 100, canvas.height / 2);
+    ctx.fillText(
+      "GAME OVER / YOU WIN!",
+      canvas.width / 2 - 180,
+      canvas.height / 2
+    );
   }
 }
 
@@ -194,5 +284,6 @@ document.addEventListener("keydown", e => {
 
 initLevel();
 </script>
+
 </body>
 </html>
